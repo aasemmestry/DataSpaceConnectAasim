@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OFFERER
+  SEEKER
+  ADMIN
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  password     String
+  fullName     String?
+  companyName  String?
+  role         UserRole   @default(SEEKER)
+  created_at   DateTime   @default(now())
+  nodes        Node[]     @relation("UserNodes")
+  contracts    Contract[] @relation("UserContracts")
+}
+
+model Node {
+  id           Int        @id @default(autoincrement())
+  node_hash    String     @unique
+  name         String
+  zone         String
+  latitude     Float
+  longitude    Float
+  capacity     Int
+  utilization  String
+  status       String     @default("Active") // Active, Leased, Stopped
+  tier         String?
+  os           String?
+  bandwidth    String?
+  rental_rate  Float
+  owner_id     String
+  owner        User       @relation("UserNodes", fields: [owner_id], references: [id])
+  contracts    Contract[]
+  created_at   DateTime   @default(now())
+}
+
+model Contract {
+  id           String    @id @default(uuid())
+  node_id      Int
+  node         Node      @relation(fields: [node_id], references: [id])
+  user_id      String
+  user         User      @relation("UserContracts", fields: [user_id], references: [id])
+  start_date   DateTime  @default(now())
+  end_date     DateTime?
+  status       String    @default("ACTIVE") // ACTIVE, TERMINATED
+  created_at   DateTime  @default(now())
+}

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-dark: #0B0F1A;
+  --color-brand-card: #161B2B;
+  --color-brand-accent: #2563EB;
+  --font-sans: "Inter", "system-ui", "sans-serif";
+}
+
+@layer base {
+  body {
+    @apply antialiased text-slate-300 bg-brand-dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* --- Enterprise Map Styling --- */
+
+/* Forces the Leaflet map to look like a high-end command center */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #0B0F1A !important;
+  outline: none;
+}
+
+/* High-Tech Map Filter: Dark Mode Overlay */
+.leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+}
+
+/* Custom Marker Styling */
+.leaflet-marker-icon {
+  filter: hue-rotate(-200deg) brightness(1.5);
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  @apply bg-[#161B2B] text-white border border-white/10 shadow-2xl;
+}
+
+/* --- Scrollbar Management --- */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Utility for glass effect */
+.glass-panel {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+}
+/* Professional High-Contrast Popups */
+.leaflet-popup-content-wrapper {
+  background: #161b2b !important; /* Matches dashboard cards */
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px !important;
+  padding: 5px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-popup-tip {
+  background: #161b2b !important;
+}
+
+.leaflet-popup-content b {
+  color: #3b82f6; /* Electric Blue for the title */
+  font-size: 14px;
+}
