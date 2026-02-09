@@ -17,13 +17,15 @@ export const Sidebar = () => {
 
   const seekerItems = [
     { icon: Globe, label: 'Marketplace', path: '/seeker/discovery' },
-    { icon: Box, label: 'My Fleet', path: '/seeker/fleet' },
+    { icon: Box, label: 'My Servers', path: '/seeker/fleet' },
     { icon: Activity, label: 'Telemetry', path: '#' },
     { icon: Settings, label: 'Settings', path: '#' },
   ];
 
   const offererItems = [
     { icon: LayoutDashboard, label: 'Global Console', path: '/offerer/dashboard' },
+    { icon: Globe, label: 'Marketplace', path: '/offerer/marketplace' },
+    { icon: Box, label: 'My Servers', path: '/offerer/fleet' },
     { icon: Server, label: 'Resource Clusters', path: '#' },
     { icon: Activity, label: 'Operational Stats', path: '#' },
     { icon: Settings, label: 'Management', path: '#' },

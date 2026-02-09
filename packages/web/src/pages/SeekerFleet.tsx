@@ -53,7 +53,7 @@ export const SeekerFleet = () => {
     <div className="flex flex-col flex-1 h-full overflow-hidden">
       <header className="h-24 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center px-10 gap-6 flex-shrink-0 bg-[#0F172A]">
         <div>
-          <h1 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-0.5">My Active Fleet</h1>
+          <h1 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-0.5">My Active Servers</h1>
           <p className="text-blue-500 text-[10px] font-bold uppercase tracking-[0.2em]">Managing {fleet.length} Distributed Resources</p>
         </div>
 
@@ -130,7 +130,7 @@ export const SeekerFleet = () => {
 
                     <div className="relative z-10">
                       <button 
-                        onClick={() => navigate(`/seeker/node/${node.id}`)}
+                        onClick={() => navigate(user?.role === 'OFFERER' ? `/offerer/node/${node.id}` : `/seeker/node/${node.id}`)}
                         className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
                       >
                         <LayoutGrid size={16} /> Control Center

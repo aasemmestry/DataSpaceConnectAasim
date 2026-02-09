@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@capacitor/device": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@dataspace/common": "*",
+    "@hookform/resolvers": "^5.2.2",
     "@reduxjs/toolkit": "^2.0.1",
     "@tailwindcss/postcss": "^4.1.18",
     "axios": "^1.6.2",
@@ -20,15 +23,18 @@
     "lucide-react": "^0.563.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.71.1",
     "react-leaflet": "^4.2.1",
     "react-redux": "^9.0.4",
     "react-router-dom": "^6.20.1",
     "recharts": "^3.7.0",
+    "socket.io-client": "^4.8.3",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@vitejs/plugin-react": "^4.2.0",

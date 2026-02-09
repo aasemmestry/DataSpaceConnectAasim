@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from './api/axiosConfig';
 import { RootState } from './store';
 import { setAuth, setError } from './store/slices/authSlice';
 import { LoginForm } from './components/LoginForm';
@@ -12,18 +12,18 @@ import { SeekerFleet } from './pages/SeekerFleet';
 import { SeekerResourceDetails } from './pages/SeekerResourceDetails';
 import { EnterpriseLayout } from './layouts/EnterpriseLayout';
 import DatacenterDetail from './pages/DatacenterDetail';
-import { AdminQueue } from './pages/AdminQueue';
-import { UserRole } from '@dataspace/common';
+// import { AdminQueue } from './pages/AdminQueue'; // Removed as we use AdminDashboard now
+import { AdminDashboard } from './pages/AdminDashboard';
 
 const API_URL = '/api';
 
-// Helper to determine where a user should go based on their role
+// FIX 1: Updated Redirect Logic
 const getDashboardPath = (role?: string) => {
   const r = role?.toUpperCase();
-  if (r === UserRole.ADMIN) return '/admin/queue';
-  if (r === UserRole.OFFERER) return '/offerer/dashboard';
-  if (r === UserRole.SEEKER) return '/seeker/discovery';
-  return '/';
+  if (r === 'ADMIN') return '/admin'; // <--- CHANGED from /admin/queue
+  if (r === 'OFFERER') return '/offerer/dashboard';
+  if (r === 'SEEKER') return '/seeker/discovery';
+  return null; 
 };
 
 function AuthPage() {
@@ -33,17 +33,21 @@ function AuthPage() {
   const { isAuthenticated, user, error } = useSelector((state: RootState) => state.auth);
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // FIX 2: Redirect Logic uses the new getDashboardPath
   useEffect(() => {
-    if (isAuthenticated && user && location.pathname === '/') {
+    if (isAuthenticated && user) {
       const path = getDashboardPath(user.role);
-      navigate(path, { replace: true });
+      // Only navigate if we have a valid path AND we aren't already there
+      if (path && location.pathname === '/') {
+        navigate(path, { replace: true });
+      }
     }
   }, [isAuthenticated, user, navigate, location.pathname]);
 
   const handleLogin = async (data: any) => {
     try {
       const payload = { ...data, email: data.email.toLowerCase().trim() };
-      const response = await axios.post(`${API_URL}/auth/login`, payload);
+      const response = await api.post(`${API_URL}/auth/login`, payload);
       dispatch(setAuth(response.data));
     } catch (err: any) {
       const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
@@ -58,7 +62,7 @@ function AuthPage() {
         email: data.email.toLowerCase().trim(),
         role: data.role.toUpperCase() 
       };
-      await axios.post(`${API_URL}/auth/register`, regData);
+      await api.post(`${API_URL}/auth/register`, regData);
       setIsRegistering(false);
       alert('Registration successful! Please login.');
     } catch (err: any) {
@@ -107,7 +111,8 @@ function AuthPage() {
   );
 }
 
-function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode, allowedRole: UserRole }) {
+// Protected Route Logic
+function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode, allowedRole: string }) {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
@@ -116,8 +121,13 @@ function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode, 
   }
   
   const userRole = user?.role?.toUpperCase();
+  
+  // Allow access if roles match OR if allowedRole is generic (if applicable in future)
   if (userRole !== allowedRole) {
-    return <Navigate to={getDashboardPath(userRole)} replace />;
+    const redirectPath = getDashboardPath(userRole);
+    if (redirectPath && redirectPath !== location.pathname) {
+      return <Navigate to={redirectPath} replace />;
+    }
   }
 
   return <>{children}</>;
@@ -128,10 +138,12 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AuthPage />} />
+        
+        {/* --- OFFERER ROUTES --- */}
         <Route 
           path="/offerer/dashboard" 
           element={
-            <ProtectedRoute allowedRole={UserRole.OFFERER}>
+            <ProtectedRoute allowedRole="OFFERER">
               <EnterpriseLayout>
                 <OffererDashboard />
               </EnterpriseLayout>
@@ -139,9 +151,41 @@ export default function App() {
           } 
         />
         <Route 
+          path="/offerer/marketplace" 
+          element={
+            <ProtectedRoute allowedRole="OFFERER">
+              <EnterpriseLayout>
+                <DiscoveryMap />
+              </EnterpriseLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/offerer/fleet" 
+          element={
+            <ProtectedRoute allowedRole="OFFERER">
+              <EnterpriseLayout>
+                <SeekerFleet />
+              </EnterpriseLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/offerer/node/:id" 
+          element={
+            <ProtectedRoute allowedRole="OFFERER">
+              <EnterpriseLayout>
+                <SeekerResourceDetails />
+              </EnterpriseLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* --- SEEKER ROUTES --- */}
+        <Route 
           path="/seeker/discovery" 
           element={
-            <ProtectedRoute allowedRole={UserRole.SEEKER}>
+            <ProtectedRoute allowedRole="SEEKER">
               <EnterpriseLayout>
                 <DiscoveryMap />
               </EnterpriseLayout>
@@ -151,7 +195,7 @@ export default function App() {
         <Route 
           path="/seeker/fleet" 
           element={
-            <ProtectedRoute allowedRole={UserRole.SEEKER}>
+            <ProtectedRoute allowedRole="SEEKER">
               <EnterpriseLayout>
                 <SeekerFleet />
               </EnterpriseLayout>
@@ -161,21 +205,25 @@ export default function App() {
         <Route 
           path="/seeker/node/:id" 
           element={
-            <ProtectedRoute allowedRole={UserRole.SEEKER}>
+            <ProtectedRoute allowedRole="SEEKER">
               <EnterpriseLayout>
                 <SeekerResourceDetails />
               </EnterpriseLayout>
             </ProtectedRoute>
           } 
         />
+
+        {/* --- ADMIN ROUTES (FIXED) --- */}
         <Route 
-          path="/admin/queue" 
+          path="/admin" 
           element={
-            <ProtectedRoute allowedRole={UserRole.ADMIN}>
-              <AdminQueue />
+            <ProtectedRoute allowedRole="ADMIN">
+              <AdminDashboard />
             </ProtectedRoute>
           } 
         />
+
+        {/* --- PUBLIC / MISC --- */}
         <Route path="/datacenter/:id" element={<DatacenterDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

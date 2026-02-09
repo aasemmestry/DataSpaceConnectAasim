@@ -2,18 +2,38 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import axios from 'axios';
+import api from '../api/axiosConfig';
+import { 
+  Zap, Cpu, Server, Shield, Globe, 
+  ChevronLeft, MessageSquare, Calendar, Maximize2, 
+  Wind, Thermometer, ShieldCheck
+} from 'lucide-react';
 
-interface Datacenter {
-  id: string;
+interface DatacenterNode {
+  id: number;
   name: string;
-  location: string;
-  powerCapacityKW: number;
-  serverModels: string[];
-  coolingSystem: string;
-  securityFeatures: string[];
-  establishmentYear: number;
+  zone: string;
   status: string;
+  tier: string;
+  os: string;
+  bandwidth: string;
+  rental_rate: number;
+  capacity: number;
+  serverModel?: string;
+  powerKW?: number;
+  surfaceArea?: number;
+  constructionYear?: number;
+  networkOperator?: string;
+  country?: string;
+  postcode?: string;
+  townCity?: string;
+  address?: string;
+  additionalAddress?: string;
+  coolingSystem: boolean;
+  heatNetwork: boolean;
+  electricityGenerator: boolean;
+  uses: string[];
+  securityFeatures: string[];
   owner: {
     companyName: string;
     email: string;
@@ -23,182 +43,213 @@ interface Datacenter {
 const DatacenterDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const [datacenter, setDatacenter] = useState<Datacenter | null>(null);
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [node, setNode] = useState<DatacenterNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactMessage, setContactMessage] = useState('');
 
   useEffect(() => {
-    const fetchDatacenter = async () => {
+    const fetchNodeDetails = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/api/datacenters/${id}`);
-        setDatacenter(response.data);
+        const response = await api.get(`/api/discovery/node/${id}`);
+        setNode(response.data);
       } catch (error) {
-        console.error('Error fetching datacenter:', error);
+        console.error('Error fetching node details:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDatacenter();
+    fetchNodeDetails();
   }, [id]);
 
-  const handleContact = async () => {
+  const handleRent = async () => {
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/');
       return;
     }
 
-    try {
-      await axios.post('http://localhost:3000/api/datacenters/contact', 
-        { datacenterId: id, message: contactMessage },
-        { withCredentials: true }
-      );
-      alert('Message sent successfully!');
-      setShowContactModal(false);
-      setContactMessage('');
-    } catch (error) {
-      alert('Failed to send message.');
+    if (window.confirm(`Initialize contract for ${node?.name}?`)) {
+      try {
+        await api.post('/api/contracts/rent', { nodeId: id, seekerEmail: user?.email });
+        alert("Success! Resource added to your fleet.");
+        navigate('/seeker/fleet');
+      } catch (err: any) {
+        alert(`Rental failed: ${err.response?.data?.error || "Error"}`);
+      }
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (!datacenter) return <div className="flex justify-center items-center h-screen">Datacenter not found</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (!node) return (
+    <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center text-white">
+      Datacenter not found
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <nav className="mb-8">
-          <Link to="/map" className="text-blue-600 hover:text-blue-800 font-medium flex items-center">
-            ← Back to Map
+    <div className="min-h-screen bg-[#0B0F1A] text-white">
+      {/* Header */}
+      <div className="bg-[#0F172A] border-b border-white/5 py-6 px-8 sticky top-0 z-50 backdrop-blur-xl bg-opacity-80">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link to={user?.role === 'OFFERER' ? '/offerer/marketplace' : '/seeker/discovery'} className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest">
+            <ChevronLeft size={16} /> Marketplace
           </Link>
-        </nav>
-
-        <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-          {/* Hero Section */}
-          <div className="bg-blue-900 text-white px-8 py-10">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-4xl font-bold mb-2">{datacenter.name}</h1>
-                <p className="text-blue-200 text-lg flex items-center">
-                  <span className="mr-2">📍</span> {datacenter.location}
-                </p>
-              </div>
-              <span className={`px-4 py-1 rounded-full text-sm font-semibold ${
-                datacenter.status === 'ACTIVE' ? 'bg-green-500' : 'bg-yellow-500'
-              }`}>
-                {datacenter.status}
-              </span>
-            </div>
-          </div>
-
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Infrastructure */}
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-                  <span className="mr-2">⚡</span> Infrastructure
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Power Capacity</span>
-                    <span className="font-semibold text-gray-900">{datacenter.powerCapacityKW} kW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cooling System</span>
-                    <span className="font-semibold text-gray-900">{datacenter.coolingSystem}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Est. Year</span>
-                    <span className="font-semibold text-gray-900">{datacenter.establishmentYear}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hardware */}
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-                  <span className="mr-2">🖥️</span> Hardware Inventory
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {datacenter.serverModels.map((model, index) => (
-                    <span key={index} className="bg-white px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700">
-                      {model}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Security */}
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 col-span-1 md:col-span-2">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-                  <span className="mr-2">🛡️</span> Security & Compliance
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {datacenter.securityFeatures.map((feature, index) => (
-                    <div key={index} className="flex items-center text-gray-700">
-                      <span className="text-green-500 mr-2">✓</span> {feature}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Section */}
-            <div className="mt-10 border-t pt-8 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Managed by {datacenter.owner.companyName}</h3>
-              <p className="text-gray-600 mb-6">Interested in this facility? Request a quote directly.</p>
-              <button 
-                onClick={() => setShowContactModal(true)}
-                className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Request Quote / Contact Offerer
-              </button>
-            </div>
+          <div className="flex items-center gap-4">
+            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${node.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+              {node.status}
+            </span>
+            <button 
+              onClick={handleRent}
+              disabled={node.status !== 'Active'}
+              className={`px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all ${
+                node.status === 'Active' ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20' : 'bg-slate-800 text-slate-500'
+              }`}
+            >
+              {node.status === 'Active' ? 'Initialize Resource' : 'Currently Leased'}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Contact Modal */}
-      {showContactModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Contact {datacenter.owner.companyName}</h3>
-                <textarea
-                  className="w-full border rounded-md p-3 focus:ring-blue-500 focus:border-blue-500"
-                  rows={4}
-                  placeholder="I'm interested in leasing capacity at this facility..."
-                  value={contactMessage}
-                  onChange={(e) => setContactMessage(e.target.value)}
-                />
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Main Info */}
+          <div className="lg:col-span-2 space-y-12">
+            <section>
+              <div className="flex items-center gap-3 text-blue-500 mb-4">
+                <Globe size={20} />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">{node.zone}</span>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button 
-                  onClick={handleContact}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Send Message
-                </button>
-                <button 
-                  onClick={() => setShowContactModal(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancel
-                </button>
+              <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4">{node.name}</h1>
+              <p className="text-xl text-slate-400 font-medium max-w-2xl leading-relaxed italic">
+                Managed by <span className="text-white border-b-2 border-blue-600">{node.owner.companyName}</span>. 
+                Full-tier infrastructure deployed in {node.country}.
+              </p>
+            </section>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <DetailCard icon={Server} label="Server Model" value={node.serverModel || 'Standard'} />
+              <DetailCard icon={Zap} label="Power Consumption" value={`${node.powerKW || 0} kW`} />
+              <DetailCard icon={Maximize2} label="Surface Area" value={`${node.surfaceArea || 0} m²`} />
+              <DetailCard icon={Calendar} label="Built Year" value={node.constructionYear?.toString() || '2022'} />
+              <DetailCard icon={Cpu} label="Compute Tier" value={node.tier} />
+              <DetailCard icon={Shield} label="Storage Capacity" value={`${node.capacity} GB`} />
+            </div>
+
+            <section className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10">
+              <h3 className="text-sm font-black uppercase tracking-widest mb-8 text-blue-500 flex items-center gap-3">
+                <Wind size={20} /> Infrastructure Specs
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-6">
+                  <SpecItem label="Cooling System" value={node.coolingSystem} />
+                  <SpecItem label="Heat Network" value={node.heatNetwork} />
+                  <SpecItem label="Electricity Generator" value={node.electricityGenerator} />
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Intended Usage</p>
+                  <div className="flex flex-wrap gap-2">
+                    {node.uses.map(use => (
+                      <span key={use} className="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-bold text-slate-300 uppercase">{use}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10">
+              <h3 className="text-sm font-black uppercase tracking-widest mb-8 text-emerald-500 flex items-center gap-3">
+                <ShieldCheck size={20} /> Security & Protocols
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                {node.securityFeatures.map(feature => (
+                  <div key={feature} className="flex items-center gap-3 text-xs font-bold text-slate-400">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    {feature.toUpperCase()}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-8">
+            <div className="bg-blue-600 rounded-[3rem] p-10 shadow-2xl shadow-blue-600/10">
+              <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-4">Contract Details</p>
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-5xl font-black italic tracking-tighter">${node.rental_rate}</span>
+                <span className="text-blue-200 font-bold">/DAY</span>
+              </div>
+              <div className="space-y-4 border-t border-white/10 pt-8 mb-8">
+                <div className="flex justify-between text-xs">
+                  <span className="text-blue-100/60 uppercase font-bold">Network Speed</span>
+                  <span className="font-black uppercase">{node.bandwidth}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-blue-100/60 uppercase font-bold">OS Version</span>
+                  <span className="font-black uppercase">{node.os}</span>
+                </div>
+              </div>
+              <button 
+                onClick={handleRent}
+                disabled={node.status !== 'Active'}
+                className={`w-full py-5 rounded-2xl font-black uppercase text-xs tracking-widest transition-all ${
+                  node.status === 'Active' ? 'bg-white text-blue-600 hover:scale-[1.02] active:scale-[0.98]' : 'bg-blue-700/50 text-blue-300 cursor-not-allowed'
+                }`}
+              >
+                Deploy Now
+              </button>
+            </div>
+
+            <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10">
+              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Facility Location</h4>
+              <div className="space-y-4">
+                <p className="text-xs font-bold leading-relaxed">
+                  {node.address}<br />
+                  {node.townCity}, {node.postcode}<br />
+                  {node.country}
+                </p>
+                {node.additionalAddress && (
+                  <p className="text-[10px] text-slate-500 italic uppercase">{node.additionalAddress}</p>
+                )}
+                <div className="pt-4">
+                  <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Network Operator</p>
+                  <p className="text-xs font-black uppercase">{node.networkOperator || 'Global Carrier'}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
+const DetailCard = ({ icon: Icon, label, value }: any) => (
+  <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl group hover:border-blue-500/30 transition-all">
+    <div className="p-3 bg-blue-600/10 rounded-xl text-blue-500 w-fit mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all">
+      <Icon size={20} />
+    </div>
+    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+    <p className="text-sm font-black uppercase text-white truncate">{value}</p>
+  </div>
+);
+
+const SpecItem = ({ label, value }: { label: string, value: boolean }) => (
+  <div className="flex items-center justify-between">
+    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase ${value ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-400'}`}>
+      {value ? 'Available' : 'Unavailable'}
+    </span>
+  </div>
+);
+
 export default DatacenterDetail;
+

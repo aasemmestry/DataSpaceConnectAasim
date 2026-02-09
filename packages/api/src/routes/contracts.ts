@@ -13,8 +13,8 @@ router.post('/rent', async (req: Request, res: Response) => {
       where: { email: seekerEmail.toLowerCase() }
     });
 
-    if (!seeker || seeker.role !== UserRole.SEEKER) {
-      return res.status(403).json({ error: 'Only Seekers can rent resources' });
+    if (!seeker) {
+      return res.status(404).json({ error: 'User account not found' });
     }
 
     const result = await prisma.$transaction(async (tx) => {

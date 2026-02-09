@@ -1,73 +1,108 @@
-import { Router, Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
-import { UserRole } from '@dataspace/common';
+import { Router, Response } from 'express';
+import { prisma } from '../lib/prisma.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Strictly protected by ADMIN role
-router.use(authenticate, requireRole([UserRole.ADMIN]));
-
-// GET /admin/pending: Fetch all datacenters with status: PENDING
-router.get('/pending', async (req: Request, res: Response) => {
-  try {
-    const pendingDatacenters = await prisma.datacenter.findMany({
-      where: { status: 'PENDING' },
-      include: {
-        owner: {
-          select: {
-            companyName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(pendingDatacenters);
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+// Middleware: Strict Admin Check
+const requireAdmin = async (req: AuthRequest, res: Response, next: Function) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId }});
+  if (user?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Access Denied: Admins only' });
   }
-});
+  next();
+};
 
-// PATCH /admin/datacenters/:id/approve: Update status to ACTIVE
-router.patch('/datacenters/:id/approve', async (req: Request, res: Response) => {
-  const { id } = req.params;
+router.use(authenticate);
+router.use(requireAdmin);
+
+// 1. Global Stats
+router.get('/stats', async (req, res) => {
   try {
-    const datacenter = await prisma.datacenter.update({
-      where: { id },
-      data: { status: 'ACTIVE' },
-      include: { owner: true },
-    });
+    const [users, nodes, contracts] = await Promise.all([
+      prisma.user.count(),
+      prisma.node.count(),
+      prisma.contract.count()
+    ]);
 
-    console.log(`[Mock Email] To: ${datacenter.owner.email} - Your datacenter "${datacenter.name}" has been APPROVED.`);
+    // Calculate total network capacity
+    const capacityAgg = await prisma.node.aggregate({ _sum: { capacity: true }});
     
-    res.json(datacenter);
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
-  }
+    // Calculate total system value (rough estimate)
+    const revenueAgg = await prisma.contract.count({ where: { status: 'ACTIVE' }});
+
+    res.json({
+      totalUsers: users,
+      totalNodes: nodes,
+      activeContracts: contracts,
+      totalCapacity: `${(capacityAgg._sum.capacity || 0) / 1000} TB`,
+      networkHealth: '99.9%'
+    });
+  } catch (err) { res.status(500).json({ error: 'Stats failed' }); }
 });
 
-// PATCH /admin/datacenters/:id/reject: Update status to INACTIVE and allow an optional rejectionReason
-router.patch('/datacenters/:id/reject', async (req: Request, res: Response) => {
+// 2. User Management
+router.get('/users', async (req, res) => {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true, fullName: true, role: true, companyName: true, created_at: true },
+    orderBy: { created_at: 'desc' }
+  });
+  res.json(users);
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ message: 'User banned and deleted' });
+  } catch (err) { res.status(500).json({ error: 'Delete failed' }); }
+});
+
+// 3. Node Moderation
+router.get('/nodes', async (req, res) => {
+  const nodes = await prisma.node.findMany({
+    include: { owner: { select: { email: true, companyName: true } } },
+    orderBy: { created_at: 'desc' }
+  });
+  res.json(nodes);
+});
+
+router.delete('/nodes/:id', async (req, res) => {
+  try {
+    await prisma.node.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'Resource force-deleted' });
+  } catch (err) { res.status(500).json({ error: 'Delete failed' }); }
+});
+// 4. GET Approval Queue (Only Pending items)
+router.get('/approvals', async (req, res) => {
+  try {
+    const pendingNodes = await prisma.node.findMany({
+      where: { verification_status: 'PENDING' },
+      include: { 
+        owner: { 
+          select: { email: true, companyName: true, entityType: true } 
+        } 
+      },
+      orderBy: { created_at: 'asc' } // Oldest first
+    });
+    res.json(pendingNodes);
+  } catch (err) { res.status(500).json({ error: 'Fetch failed' }); }
+});
+
+// 5. POST Moderate Node (Approve/Reject)
+router.post('/moderate/:id', async (req, res) => {
   const { id } = req.params;
-  const { rejectionReason } = req.body;
+  const { action } = req.body; // 'APPROVE' or 'REJECT'
+
+  const newStatus = action === 'APPROVE' ? 'VERIFIED' : 'REJECTED';
 
   try {
-    const datacenter = await prisma.datacenter.update({
-      where: { id },
-      data: { 
-        status: 'INACTIVE',
-        rejectionReason: rejectionReason || null
-      },
-      include: { owner: true },
+    const node = await prisma.node.update({
+      where: { id: parseInt(id) },
+      data: { verification_status: newStatus }
     });
-
-    console.log(`[Mock Email] To: ${datacenter.owner.email} - Your datacenter "${datacenter.name}" has been REJECTED. Reason: ${rejectionReason || 'No reason provided.'}`);
-
-    res.json(datacenter);
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+    res.json({ message: `Node ${newStatus.toLowerCase()}`, node });
+  } catch (err) {
+    res.status(500).json({ error: 'Moderation failed' });
   }
 });
-
 export default router;

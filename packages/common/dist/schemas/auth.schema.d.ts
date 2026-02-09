@@ -8,4 +8,3 @@ export declare const registerSchema: z.ZodObject<{
     role: z.ZodString & z.ZodType<"OFFERER" | "SEEKER", string, z.core.$ZodTypeInternals<"OFFERER" | "SEEKER", string>>;
 }, z.core.$strip>;
 export type RegisterInput = z.infer<typeof registerSchema>;
-//# sourceMappingURL=auth.schema.d.ts.map

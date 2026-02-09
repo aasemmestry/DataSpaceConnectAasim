@@ -18,6 +18,12 @@ model User {
   email        String     @unique
   password     String
   fullName     String?
+  firstName    String?
+  lastName     String?
+  phoneNumber  String?
+  country      String?
+  accountType  String?    @default("seeker")
+  entityType   String?
   companyName  String?
   role         UserRole   @default(SEEKER)
   created_at   DateTime   @default(now())
@@ -26,23 +32,47 @@ model User {
 }
 
 model Node {
-  id           Int        @id @default(autoincrement())
-  node_hash    String     @unique
-  name         String
-  zone         String
-  latitude     Float
-  longitude    Float
-  capacity     Int
-  utilization  String
-  status       String     @default("Active") // Active, Leased, Stopped
-  tier         String?
-  os           String?
-  bandwidth    String?
-  rental_rate  Float
-  owner_id     String
-  owner        User       @relation("UserNodes", fields: [owner_id], references: [id])
-  contracts    Contract[]
-  created_at   DateTime   @default(now())
+  id                   Int        @id @default(autoincrement())
+  node_hash            String     @unique
+  name                 String
+  zone                 String
+  latitude             Float
+  longitude            Float
+  capacity             Int
+  utilization          String
+  status               String     @default("Active") // Active, Leased, Stopped
+  tier                 String?
+  os                   String?
+  bandwidth            String?
+  rental_rate          Float
+  
+  // New Technical Specs
+  serverModel          String?
+  powerKW              Float?
+  surfaceArea          Float?
+  constructionYear     Int?
+  networkOperator      String?
+  image_url             String?  @default("https://images.unsplash.com/photo-1558494949-efc535b5c4c1?q=80&w=1000&auto=format&fit=crop")
+  // NEW: Moderation Status
+  verification_status   String   @default("PENDING")
+  // New Location Specs
+  country              String?
+  postcode             String?
+  townCity             String?
+  address              String?
+  additionalAddress    String?
+  
+  // New Features & Usage
+  coolingSystem        Boolean    @default(false)
+  heatNetwork          Boolean    @default(false)
+  electricityGenerator Boolean    @default(false)
+  uses                 String[]   @default([])
+  securityFeatures     String[]   @default([])
+
+  owner_id             String
+  owner                User       @relation("UserNodes", fields: [owner_id], references: [id])
+  contracts            Contract[]
+  created_at           DateTime   @default(now())
 }
 
 model Contract {

@@ -12,13 +12,13 @@ router.get('/fleet', async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
 
   try {
-    // UPDATED: Using snake_case fields as per your database schema
     const fleetNodes = await prisma.node.findMany({
       where: {
         contracts: {
           some: {
             user_id: userId,
-            status: 'ACTIVE'
+            // FIX: Check for both 'Active' AND 'ACTIVE' to handle case mismatch
+            status: { in: ['Active', 'ACTIVE'] }
           }
         }
       },
@@ -26,7 +26,7 @@ router.get('/fleet', async (req: AuthRequest, res: Response) => {
         contracts: {
           where: {
             user_id: userId,
-            status: 'ACTIVE'
+            status: { in: ['Active', 'ACTIVE'] }
           },
           take: 1
         }
@@ -36,7 +36,9 @@ router.get('/fleet', async (req: AuthRequest, res: Response) => {
     const formattedFleet = fleetNodes.map(node => ({
       ...node,
       contract_start_date: node.contracts[0]?.start_date || null,
-      contract_id: node.contracts[0]?.id || null
+      contract_id: node.contracts[0]?.id || null,
+      // Ensure the frontend always gets a valid status to display
+      status: node.status || 'Active' 
     }));
 
     res.json(formattedFleet);
@@ -58,13 +60,13 @@ router.get('/node/:id', async (req: AuthRequest, res: Response) => {
         contracts: {
           some: {
             user_id: userId,
-            status: 'ACTIVE'
+            status: { in: ['Active', 'ACTIVE'] }
           }
         }
       },
       include: {
         contracts: {
-          where: { status: 'ACTIVE' },
+          where: { status: { in: ['Active', 'ACTIVE'] } },
           take: 1
         }
       }
